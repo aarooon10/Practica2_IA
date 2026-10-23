@@ -10,17 +10,12 @@ with open("modelo_california.pkl", "rb") as f:
 
 @app.route("/", methods=["GET"])
 def home():
-    return "¡El servicio web de California Housing está activo y funcionando!"
+    return "¡El modelo de California Housing está funcionando en Render!"
 
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        # Obtener los datos enviados en formato JSON
         data = request.get_json(force=True)
-        
-        # Extraer las características (features) requeridas por el modelo
-        # El dataset de California Housing tiene 8 características:
-        # MedInc, HouseAge, AveRooms, AveBedrms, Population, AveOccup, Latitude, Longitude
         features = [
             data.get("MedInc", 3.0),
             data.get("HouseAge", 20.0),
@@ -31,14 +26,11 @@ def predict():
             data.get("Latitude", 34.0),
             data.get("Longitude", -118.0)
         ]
-        
-        # Convertir a matriz 2D para la predicción
         datos_entrada = np.array([features])
         prediccion = modelo.predict(datos_entrada)
         
-        # Devolver el resultado en formato JSON
         return jsonify({
-            "prediccion_precio_mediano_vivienda": float(prediccion[0])
+            "prediccion": float(prediccion[0])
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
