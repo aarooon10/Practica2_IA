@@ -1,20 +1,17 @@
 # Práctica 2: Despliegue de Modelo de Machine Learning en Render
 
-Este repositorio contiene la implementación y el despliegue de una aplicación web en Flask basada en un modelo de Machine Learning (California Housing).
+Repositorio para el desarrollo y despliegue de una API en Flask basada en el modelo de Machine Learning de California Housing.
+
+## Autores
+- David Tella Miranda
+- Aaron Hernández Ocejo
 
 ## Pasos Seguidos para el Despliegue
+1. **Creación del repositorio**: Se estructuró el proyecto en GitHub incluyendo el script principal (`app.py`), el modelo entrenado (`modelo_california.pkl`) y el archivo de dependencias (`requirements.txt`).
+2. **Despliegue en Render**: Se creó un nuevo Web Service en Render vinculado a este repositorio público.
+3. **Comando de Arranque (Start Command)**: Configurado en Render para producción mediante Gunicorn:
+   ```bash
+   gunicorn app:app```
 
-1. **Creación de cuenta y servicio**: 
-   - Se creó una cuenta gratuita en la plataforma de despliegue [Render](https://render.com).
-   - Se configuró un nuevo servicio web (*Web Service*) conectado a este repositorio público de GitHub.
-
-2. **Configuración del Repositorio**:
-   - Se estructuró el proyecto incluyendo el archivo principal `app.py` con el *health-check* (`GET /`) y el endpoint de predicción (`POST /predict`).
-   - Se añadió el archivo del modelo entrenado (`modelo_california.pkl`) y el script de prueba local (`test.py`).
-
-3. **Comandos y Despliegue**:
-   - El entorno se configuró utilizando `uv` y las dependencias necesarias de Python.
-   - El despliegue automatizado se gestionó directamente desde GitHub, forzando la compilación y ejecución de la aplicación Flask en el puerto `10000`.
-
-## Enlace del Servicio Desplegado
-* **URL Pública**: https://practica2-ia.onrender.com/[cite: 5]
+Enlace del Servicio Desplegado
+https://practica2-ia.onrender.com
