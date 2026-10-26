@@ -1,54 +1,60 @@
 import os
-import pickle
 import urllib.request
-import numpy as np
+import pickle
 from flask import Flask, request, jsonify
+import numpy as np
 
 app = Flask(__name__)
 
-MODELO_PATH = "modelo_california.pkl"
-URL_MODELO_GITHUB = "https://raw.githubusercontent.com/aarooon10/Practica2_IA/main/modelo_california.pkl"
+MODEL_URL = "https://raw.githubusercontent.com/aarooon10/Practica2_IA/main/modelo_california.pkl"
+MODEL_PATH = "modelo_california.pkl"
 
 def download_model():
-    if not os.path.exists(MODELO_PATH):
-        print("Modelo no encontrado localmente. Descargando desde GitHub...")
+    if not os.path.exists(MODEL_PATH):
         try:
-            urllib.request.urlretrieve(URL_MODELO_GITHUB, MODELO_PATH)
-            print("¡Modelo descargado con éxito!")
-        except Exception as e:
-            print(f"Error al descargar el modelo: {e}")
+            urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        except Exception:
+            pass
 
-# Descargar modelo si es necesario antes de cargarlo
 download_model()
 
-# Cargar el modelo entrenado
-with open(MODELO_PATH, "rb") as f:
-    modelo = pickle.load(f)
+try:
+    with open(MODEL_PATH, "rb") as f:
+        model = pickle.load(f)
+except Exception:
+    model = None
 
 @app.route("/", methods=["GET"])
 def home():
-    return "¡El modelo de California Housing está funcionando en Render!"
+    return jsonify({
+        "status": "online",
+        "message": "API funcionando correctamente"
+    })
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    if model is None:
+        return jsonify({"error": "Modelo no cargado"}), 500
+    
     try:
         data = request.get_json(force=True)
         features = [
-            data.get("MedInc", 3.0),
-            data.get("HouseAge", 20.0),
-            data.get("AveRooms", 5.0),
-            data.get("AveBedrms", 1.0),
-            data.get("Population", 500.0),
-            data.get("AveOccup", 3.0),
-            data.get("Latitude", 34.0),
-            data.get("Longitude", -118.0)
+            float(data.get("MedInc", 0)),
+            float(data.get("HouseAge", 0)),
+            float(data.get("AveRooms", 0)),
+            float(data.get("AveBedrms", 0)),
+            float(data.get("Population", 0)),
+            float(data.get("AveOcc", 0)),
+            float(data.get("Latitude", 0)),
+            float(data.get("Longitude", 0))
         ]
-        datos_entrada = np.array([features])
-        prediccion = modelo.predict(datos_entrada)
+        
+        prediction = model.predict(np.array([features]))
         
         return jsonify({
-            "prediccion": float(prediccion[0])
+            "prediction": float(prediction[0])
         })
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
