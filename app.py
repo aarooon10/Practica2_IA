@@ -1,62 +1,82 @@
+"""Plantilla: servicio web para el modelo de precios de casas en California.
+ 
+Solo tienes que completar las partes marcadas con TODO.
+El resto del código ya está hecho.
+Autores: David Tella, Aaron Hernández
+ 
+Ejecución en local (con modelo_california.pkl generado en el ejercicio 1):
+    uvicorn app:app --reload
+Comando de arranque en Render (Start Command):
+    uvicorn app:app --host 0.0.0.0 --port $PORT
+"""
 import os
-import urllib.request
-import pickle
-from flask import Flask, request, jsonify
-import numpy as np
-
-app = Flask(__name__)
-
-MODEL_URL = "https://raw.githubusercontent.com/aarooon10/Practica2_IA/main/modelo_california.pkl"
+from contextlib import asynccontextmanager
+ 
+import joblib
+import pandas as pd
+import requests
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+ 
 MODEL_PATH = "modelo_california.pkl"
-
-def download_model():
-    if not os.path.exists(MODEL_PATH):
-        try:
-            urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-        except Exception:
-            pass
-
-download_model()
-
-try:
-    with open(MODEL_PATH, "rb") as f:
-        model = pickle.load(f)
-except Exception:
-    model = None
-
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": "online",
-        "message": "API funcionando correctamente"
-    })
-
-@app.route("/predict", methods=["POST"])
-def predict():
+MODEL_URL = "https://raw.githubusercontent.com/aarooon10/Practica2_IA/main/modelo_california.pkl"
+DOWNLOAD_TIMEOUT = 30  # segundos
+ 
+# El modelo se carga al arrancar y se guarda aquí.
+state = {"model": None}
+ 
+ 
+class HouseFeatures(BaseModel):
+    """Variables de entrada del modelo (una zona censal)."""
+    MedInc: float
+    HouseAge: float
+    AveRooms: float
+    AveBedrms: float
+    Population: float
+    AveOccup: float
+    Latitude: float
+    Longitude: float
+ 
+ 
+def download_model(url: str = MODEL_URL, path: str = MODEL_PATH):
+    """Descarga el modelo desde `url` y lo guarda en `path`."""
+    response = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
+    response.raise_for_status()
+    with open(path, "wb") as f:
+        f.write(response.content)
+    print(f"Modelo descargado desde GitHub y guardado en {path}")
+ 
+ 
+def load_model(path: str = MODEL_PATH):
+    """Carga el modelo. Si no existe en local, lo descarga antes de GitHub."""
+    if not os.path.exists(path):
+        print(f"{path} no encontrado en local, descargando...")
+        download_model()
+    return joblib.load(path)
+ 
+ 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Se ejecuta una vez al arrancar el servicio."""
+    state["model"] = load_model()
+    yield
+ 
+ 
+app = FastAPI(title="Precio de casas en California", lifespan=lifespan)
+ 
+ 
+@app.get("/")
+def health():
+    """Health-check: confirma que el servicio está funcionando."""
+    return {"status": "ok", "autores": "David Tella, Aaron Hernández P2"}
+ 
+ 
+@app.post("/predict")
+def predict(features: HouseFeatures):
+    """Devuelve el precio medio estimado (en cientos de miles de dólares)."""
+    model = state["model"]
     if model is None:
-        return jsonify({"error": "Modelo no cargado"}), 500
-    
-    try:
-        data = request.get_json(force=True)
-        features = [
-            float(data.get("MedInc", 0)),
-            float(data.get("HouseAge", 0)),
-            float(data.get("AveRooms", 0)),
-            float(data.get("AveBedrms", 0)),
-            float(data.get("Population", 0)),
-            float(data.get("AveOcc", 0)),
-            float(data.get("Latitude", 0)),
-            float(data.get("Longitude", 0))
-        ]
-        
-        prediction = model.predict(np.array([features]))
-        
-        return jsonify({
-            "prediction": float(prediction[0])
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
+    X = pd.DataFrame([features.model_dump()])
+    prediction = model.predict(X)[0]
+    return {"MedHouseVal": float(prediction)}
